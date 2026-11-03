@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Jyotish Learning Assistant</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--ink:#2a2420;--mute:#7a6f66;--line:#e6ddd2;--accent:#b4541a;--accent2:#f4e6da}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1815;--card:#24201c;--ink:#efe7de;--mute:#a59a8f;--line:#3a332c;--accent:#e8894d;--accent2:#3a2a1f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+header{padding:16px 20px;border-bottom:1px solid var(--line)}h1{margin:0;font-size:20px}header p{margin:2px 0 0;color:var(--mute)}
+nav{display:flex;gap:6px;padding:10px 20px;flex-wrap:wrap}nav button{background:none;border:1px solid var(--line);color:var(--ink);padding:6px 14px;border-radius:20px;cursor:pointer}
+nav button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+main{max-width:1100px;margin:0 auto;padding:10px 16px 60px}.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+label{display:block;font-size:13px;color:var(--mute)}input,textarea,select{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:70px}button.go{background:var(--accent);color:#fff;border:0;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--mute);font-weight:500}
+.two{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:14px}@media(max-width:760px){.two{grid-template-columns:1fr}}
+svg text{fill:var(--ink);font-size:11px}svg .hn{fill:var(--mute);font-size:9px}svg line,svg rect,svg polygon{stroke:var(--accent);fill:none;stroke-width:1.2}
+.answer{white-space:pre-wrap;background:var(--accent2);padding:12px;border-radius:8px}.mute{color:var(--mute);font-size:13px}
+.sugg{position:absolute;z-index:5;left:0;right:0;background:var(--card);border:1px solid var(--line);border-radius:6px;display:none}.sugg div{padding:6px 8px;cursor:pointer}.sugg div:hover{background:var(--accent2)}
+.rule{border-bottom:1px solid var(--line);padding:8px 0}.rule b{color:var(--accent)}.x{float:right;background:none;border:0;color:var(--mute);cursor:pointer}
+</style></head><body>
+<header><h1>Jyotish Learning Assistant</h1><p>Sidereal · Lahiri · whole-sign houses. It learns the rules you teach and gets better from your corrections.</p></header>
+<nav><button data-t="chart" class="on">Chart</button><button data-t="teach">Teach</button><button data-t="analyze">Analyze</button><button data-t="learned">What it has learned</button></nav>
+<main>
+<section id="chart" class="tab on">
+ <div class="card"><div class="grid">
+  <div><label>Name</label><input id="b_name" value=""></div>
+  <div style="position:relative"><label>Birth place</label><input id="b_place" autocomplete="off" placeholder="Start typing a city" oninput="findPlace(this.value)"><div id="placeList" class="sugg"></div></div>
+  <div><label>Birth date</label><input id="b_date" type="date"></div>
+  <div><label>Birth time (local)</label><input id="b_time" type="time"></div>
+  <div><label>UTC offset <span id="b_zone" class="mute"></span></label><input id="b_tz" type="number" step="0.25" value="5.5" oninput="$('b_zone').textContent='';placeTz=''"></div>
+  <div><label>Latitude (N +)</label><input id="b_lat" type="number" step="0.0001" placeholder="28.6139"></div>
+  <div><label>Longitude (E +)</label><input id="b_lon" type="number" step="0.0001" placeholder="77.2090"></div>
+ </div><button class="go" onclick="makeChart()">Compute chart</button>
+ <span class="mute" style="margin-left:10px">Saved charts: <select id="saved" style="width:auto" onchange="loadChart(this.value)"></select></span></div>
+ <div id="chartOut"></div>
+</section>
+<section id="teach" class="tab">
+ <div class="card"><p class="mute">Teach one rule at a time. Write the condition with the chart terms the app uses, like "Saturn in house 7", "Jupiter exalted", "lord of house 10 in house 9", "Moon in Rohini", "Venus mahadasha". Free wording works too.</p>
+  <label>If (condition)</label><input id="r_cond" placeholder="Saturn in house 7">
+  <label>Then (interpretation)</label><textarea id="r_int" placeholder="Marriage tends to come later, partner mature or older; duty-bound relationship."></textarea>
+  <div class="grid"><div><label>Topic</label><input id="r_topic" placeholder="marriage"></div><div><label>Source</label><input id="r_src" placeholder="BPHS ch. 18 / my guru"></div></div>
+  <button class="go" onclick="addRule()">Save rule</button> <span id="r_msg" class="mute"></span></div>
+ <div class="card"><h3 style="margin-top:0">Rules taught (<span id="rcount">0</span>)</h3><div id="rules"></div></div>
+</section>
+<section id="analyze" class="tab">
+ <div class="card"><label>Chart</label><select id="a_chart"></select>
+  <label>Question (optional)</label><input id="a_q" placeholder="What does this chart say about career? / Overall reading">
+  <button class="go" onclick="runAnalysis()">Analyze</button> <span id="a_msg" class="mute"></span></div>
+ <div id="aOut"></div>
+</section>
+<section id="learned" class="tab"><div class="card"><h3 style="margin-top:0">Your corrections</h3><div id="corr"></div>
+ <p><a href="/api/export" style="color:var(--accent)">Export everything taught (JSON)</a>. This is the dataset a fine-tuned model can be trained on later.</p></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const api=async(p,o={})=>{const r=await fetch(p,{headers:{'Content-Type':'application/json'},...o});if(!r.ok)throw new Error(await r.text());return r.json()};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.tab').forEach(x=>x.classList.remove('on'));b.classList.add('on');$(b.dataset.t).classList.add('on');if(b.dataset.t==='learned')loadCorr()});
+const AB={Sun:'Su',Moon:'Mo',Mars:'Ma',Mercury:'Me',Jupiter:'Ju',Venus:'Ve',Saturn:'Sa',Rahu:'Ra',Ketu:'Ke'};
+function northChart(c){ // North Indian diamond: house 1 top centre, counter-clockwise
+ const S=300,h=S/2,q=S/4,P={1:[h,q],2:[q,q/2.2],3:[q/2.2,q],4:[q,h],5:[q/2.2,3*q],6:[q,S-q/2.2],7:[h,3*q],8:[3*q,S-q/2.2],9:[S-q/2.2,3*q],10:[3*q,h],11:[S-q/2.2,q],12:[3*q,q/2.2]};
+ const byH={};c.planets.forEach(p=>(byH[p.house]=byH[p.house]||[]).push(AB[p.name]+(p.retrograde&&!['Rahu','Ketu'].includes(p.name)?'℞':'')));
+ let t='';for(let H=1;H<=12;H++){const [x,y]=P[H];const sign=(c.lagna.sign_index+H-1)%12+1;
+  t+=`<text class="hn" x="${x}" y="${y-12}" text-anchor="middle">${sign}${H===1?' Asc':''}</text>`;
+  (byH[H]||[]).forEach((n,i)=>t+=`<text x="${x}" y="${y+2+i*12}" text-anchor="middle">${n}</text>`)}
+ return `<svg viewBox="0 0 ${S} ${S}" width="100%" style="max-width:360px"><rect x="1" y="1" width="${S-2}" height="${S-2}"/><line x1="0" y1="0" x2="${S}" y2="${S}"/><line x1="${S}" y1="0" x2="0" y2="${S}"/><polygon points="${h},0 ${S},${h} ${h},${S} 0,${h}"/>${t}</svg>`}
+function renderChart(d){const c=d.chart;
+ const rows=[c.lagna,...c.planets].map(p=>`<tr><td><b>${p.name}</b>${p.retrograde&&!['Rahu','Ketu','Lagna'].includes(p.name)?' ℞':''}</td><td>${p.sign} ${p.degree_in_sign.toFixed(2)}°</td><td>${p.name==='Lagna'?1:p.house}</td><td>${p.nakshatra} ${p.pada}</td><td>${p.navamsa_sign}</td><td>${p.dignity||''}</td></tr>`).join('');
+ const cur=d.current_dasha;const md=c.dashas.map(x=>`<tr${x.lord===cur.mahadasha?' style="font-weight:600"':''}><td>${x.lord}</td><td>${x.start}</td><td>${x.end}</td></tr>`).join('');
+ $('chartOut').innerHTML=`<div class="two"><div class="card">${northChart(c)}<p class="mute">Numbers are signs (1 = Aries). Ayanamsa ${c.ayanamsa}°.</p></div>
+ <div class="card"><table><tr><th></th><th>Sign</th><th>House</th><th>Nakshatra</th><th>D9</th><th>Dignity</th></tr>${rows}</table></div></div>
+ <div class="two"><div class="card"><h3 style="margin-top:0">Vimshottari</h3><p>Now: <b>${cur.mahadasha}</b> / ${cur.antardasha}</p><table><tr><th>Mahadasha</th><th>From</th><th>To</th></tr>${md}</table></div>
+ <div class="card"><h3 style="margin-top:0">Chart factors</h3><p class="mute">Rules whose condition mentions these phrases are used for analysis.</p><p style="font-size:13px">${d.factors.map(esc).join(' · ')}</p>
+ <button class="go" onclick="$('a_chart').value=${d.id};document.querySelector('[data-t=analyze]').click()">Analyze this chart</button></div></div>`}
+let placeTz='',placeT;
+function findPlace(q){clearTimeout(placeT);placeT=setTimeout(async()=>{const l=$('placeList');if(q.length<2){l.style.display='none';return}
+ const ps=await api('/api/places?q='+encodeURIComponent(q));window._ps=ps;l.innerHTML=ps.map((p,i)=>`<div onclick="pickPlace(${i})">${esc(p.name)}, ${esc(p.country)} <span class="mute">${p.latitude.toFixed(2)}, ${p.longitude.toFixed(2)}</span></div>`).join('');l.style.display=ps.length?'block':'none'},250)}
+function pickPlace(i){const p=window._ps[i];$('b_place').value=p.name+', '+p.country;$('b_lat').value=p.latitude;$('b_lon').value=p.longitude;placeTz=p.timezone;$('b_zone').textContent='('+p.timezone+', set from date)';$('placeList').style.display='none'}
+async function makeChart(){try{const body={name:$('b_name').value||'Unnamed',place:$('b_place').value,date:$('b_date').value,time:$('b_time').value,latitude:+$('b_lat').value,longitude:+$('b_lon').value};
+ if(placeTz)body.timezone=placeTz;else body.utc_offset=+$('b_tz').value;
+ const d=await api('/api/charts',{method:'POST',body:JSON.stringify(body)});$('b_tz').value=d.chart.utc_offset;renderChart(d);loadCharts(d.id)}catch(e){alert(e.message)}}
+async function loadChart(id){if(id)renderChart(await api('/api/charts/'+id))}
+async function loadCharts(sel){const cs=await api('/api/charts');const o=cs.map(c=>`<option value="${c.id}">${esc(c.name)} · ${c.input.date}</option>`).join('');$('saved').innerHTML='<option value="">—</option>'+o;$('a_chart').innerHTML=o;if(sel){$('saved').value=sel;$('a_chart').value=sel}}
+async function loadRules(){const rs=await api('/api/rules');$('rcount').textContent=rs.length;$('rules').innerHTML=rs.map(r=>`<div class="rule"><button class="x" onclick="delRule(${r.id})">delete</button><b>R${r.id}</b> If <i>${esc(r.condition)}</i> then ${esc(r.interpretation)} <span class="mute">${esc(r.topic)}${r.source?' · '+esc(r.source):''}</span></div>`).join('')||'<p class="mute">Nothing yet. Teach the first rule above.</p>'}
+async function addRule(){if(!$('r_cond').value||!$('r_int').value)return;await api('/api/rules',{method:'POST',body:JSON.stringify({condition:$('r_cond').value,interpretation:$('r_int').value,topic:$('r_topic').value,source:$('r_src').value})});$('r_cond').value=$('r_int').value='';$('r_msg').textContent='Saved.';loadRules()}
+async function delRule(id){if(confirm('Delete rule R'+id+'?')){await api('/api/rules/'+id,{method:'DELETE'});loadRules()}}
+async function runAnalysis(){$('a_msg').textContent='Thinking…';try{const d=await api('/api/analyze',{method:'POST',body:JSON.stringify({chart_id:+$('a_chart').value,question:$('a_q').value})});$('a_msg').textContent='';
+ $('aOut').innerHTML=`<div class="card"><div class="answer">${esc(d.answer)}</div><p class="mute">Rules used: ${d.rules_used.map(r=>'R'+r.id).join(', ')||'none'}</p></div>
+ <div class="card"><h3 style="margin-top:0">Correct me</h3><textarea id="c_text" placeholder="What did I get wrong, and what is right?"></textarea>
+ <details><summary class="mute">Also save as a new rule</summary><label>If</label><input id="c_cond"><label>Then</label><textarea id="c_int"></textarea></details>
+ <button class="go" onclick="correct(${d.id})">Save correction</button> <span id="c_msg" class="mute"></span></div>`}catch(e){$('a_msg').textContent=e.message}}
+async function correct(aid){const body={analysis_id:aid,correction:$('c_text').value};if($('c_cond').value&&$('c_int').value)body.also_as_rule={condition:$('c_cond').value,interpretation:$('c_int').value,topic:'',source:'correction'};
+ if(!body.correction)return;await api('/api/corrections',{method:'POST',body:JSON.stringify(body)});$('c_msg').textContent='Saved. I will use this next time.';loadRules()}
+async function loadCorr(){const cs=await api('/api/corrections');$('corr').innerHTML=cs.map(c=>`<div class="rule"><span class="mute">${c.created} · on "${esc(c.question||'overall analysis')}"</span><br>${esc(c.correction)}</div>`).join('')||'<p class="mute">No corrections yet.</p>'}
+loadCharts();loadRules();
+</script></body></html>

@@ -1,0 +1,6 @@
+pyswisseph>=2.10
+anthropic>=0.40
+fastapi>=0.110
+uvicorn>=0.29
+geonamescache>=2.0
+tzdata
