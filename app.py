@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from jyotish.analyze import analyze
 from jyotish.chart import chart_factors, chart_summary, compute_chart, current_dasha
 from jyotish.knowledge import KnowledgeBase
+from jyotish.parashari import aspects, functional_nature, yogas
 from jyotish.places import search_places, utc_offset
 
 kb = KnowledgeBase(os.environ.get("JYOTISH_DB", "data/jyotish.db"))
@@ -89,7 +90,8 @@ def get_chart(chart_id: int):
 def _chart_view(c):
     md, ad = current_dasha(c)
     return {"chart": c.to_dict(), "summary": chart_summary(c), "factors": chart_factors(c),
-            "current_dasha": {"mahadasha": md, "antardasha": ad}}
+            "current_dasha": {"mahadasha": md, "antardasha": ad},
+            "yogas": yogas(c), "functional": functional_nature(c), "aspects": aspects(c)}
 
 
 @app.get("/api/places")
