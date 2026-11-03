@@ -1,0 +1,592 @@
+<title>AstroBuddy</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working desk. Slim header with tabs, then a two-column bench (inputs left, the chart and its readings right) that stacks on phones. */
+:root{
+  --bg:#f2f3f7; --surface:#ffffff; --sunk:#e8eaf1; --ink:#1d2033; --mute:#5f6378; --line:#d7dae5;
+  --accent:#a8650b; --accent-ink:#ffffff; --accent-soft:#f6e8d2; --indigo:#2f3a78; --indigo-soft:#e3e6f5;
+  --good:#2f7d4f; --bad:#b03a2e; --warn:#9a6a00;
+  --display:"Marcellus","Palatino Linotype",Georgia,serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12141f; --surface:#1b1e2d; --sunk:#232739; --ink:#e7e8f0; --mute:#9a9eb5; --line:#2f3449;
+  --accent:#e0a24a; --accent-ink:#1a1408; --accent-soft:#3a2d18; --indigo:#a9b4f0; --indigo-soft:#262c4d;
+  --good:#6fc493; --bad:#ec8a7e; --warn:#e2b75a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12141f; --surface:#1b1e2d; --sunk:#232739; --ink:#e7e8f0; --mute:#9a9eb5; --line:#2f3449;
+  --accent:#e0a24a; --accent-ink:#1a1408; --accent-soft:#3a2d18; --indigo:#a9b4f0; --indigo-soft:#262c4d;
+  --good:#6fc493; --bad:#ec8a7e; --warn:#e2b75a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 var(--body);margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{border-bottom:1px solid var(--line);background:var(--surface)}
+header .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;padding-block:14px}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand h1{font:400 26px/1 var(--display);margin:0;letter-spacing:.02em}
+.brand span{color:var(--mute);font-size:13px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{color:var(--mute);text-decoration:none;padding:6px 12px;border-radius:6px;font-weight:600;font-size:15px}
+nav a[aria-current="page"]{background:var(--indigo-soft);color:var(--indigo)}
+nav a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{padding-block:20px 60px}
+.view[hidden]{display:none!important}
+.bench{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:860px){.bench{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.stack{display:flex;flex-direction:column;gap:14px;min-width:0}
+h2{font:400 21px/1.2 var(--display);margin:0 0 10px;text-wrap:balance}
+h3{font:600 13px/1.3 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin:0 0 8px}
+label{display:block;font-size:13px;font-weight:600;color:var(--mute);margin-bottom:4px}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;font-size:15px}
+textarea{min-height:84px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{min-width:0}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:6px;padding:9px 16px;font:600 15px var(--body);cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.danger{background:var(--bad);color:var(--surface)}
+.btn:disabled{opacity:.55;cursor:default}
+.hint{color:var(--mute);font-size:13px;margin:4px 0 0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sugg{position:relative}
+.sugg ul{position:absolute;z-index:5;left:0;right:0;top:100%;margin:2px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;box-shadow:0 6px 18px rgb(0 0 0 / .12);max-height:280px;overflow:auto}
+.sugg li button{all:unset;display:block;width:100%;box-sizing:border-box;padding:7px 8px;border-radius:4px;cursor:pointer}
+.sugg li button:hover,.sugg li button:focus{background:var(--indigo-soft)}
+.sugg small{color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 11px;font:500 13px var(--body);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--indigo);border-color:var(--indigo);color:var(--surface)}
+.banner{background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:14px}
+.chart-top{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:700px){.chart-top{grid-template-columns:minmax(0,1fr)}}
+.kundali{width:100%;max-width:340px;aspect-ratio:1;display:block}
+.kundali .frame{fill:none;stroke:var(--accent);stroke-width:1.4}
+.kundali .num{fill:var(--mute);font:500 10px var(--mono)}
+.kundali .pl{fill:var(--ink);font:600 12px var(--body)}
+.kundali .asc{fill:var(--accent);font:600 10px var(--body)}
+.tablewrap{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 7px;border-radius:4px}
+.tag.exalted,.tag.moolatrikona,.tag.yogakaraka,.tag.benefic{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+.tag.debilitated,.tag.malefic{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.tag.own{background:var(--indigo-soft);color:var(--indigo)}
+.tag.neutral,.tag.mixed{background:var(--sunk);color:var(--mute)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:start}
+.yoga{padding:8px 0;border-bottom:1px solid var(--line)}
+.yoga:last-child{border-bottom:0}
+.yoga b{font-family:var(--display);font-weight:400;font-size:17px}
+.yoga p{margin:2px 0 0;color:var(--mute);font-size:14px}
+.dasha{display:flex;height:30px;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.dasha div{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--mute);border-right:1px solid var(--line);min-width:0;overflow:hidden;white-space:nowrap}
+.dasha div.now{background:var(--accent);color:var(--accent-ink)}
+.dasha-legend{display:flex;justify-content:space-between;font:12px var(--mono);color:var(--mute);margin-top:4px}
+.rule{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.rule .id{font:500 12px var(--mono);color:var(--accent);padding-top:3px}
+.rule .cond{font-weight:700}
+.rule .meta{color:var(--mute);font-size:13px}
+.rule .acts{display:flex;gap:6px}
+.answer{font-size:16px;line-height:1.65;max-width:72ch}
+.answer h4{font:400 19px var(--display);margin:18px 0 6px}
+.answer ul{padding-left:20px;margin:6px 0}
+.answer p{margin:8px 0}
+.cite{display:inline-block;font:500 12px var(--mono);background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:0 5px;cursor:help}
+.gen{color:var(--indigo);font-style:italic}
+.empty{color:var(--mute);font-size:15px;padding:12px 0}
+.status{font-size:14px;color:var(--mute)}
+.status.err{color:var(--bad)}
+.stat{display:flex;gap:24px;flex-wrap:wrap}
+.stat div b{display:block;font:400 30px/1.1 var(--display)}
+.stat div span{color:var(--mute);font-size:13px}
+details summary{cursor:pointer;color:var(--mute);font-size:14px;font-weight:600}
+@media (prefers-reduced-motion:no-preference){.fade{animation:fade .35s ease both}@keyframes fade{from{opacity:.4}to{opacity:1}}}
+</style>
+
+<header><div class="wrap">
+  <div class="brand"><h1>AstroBuddy</h1><span>learning Parashari Jyotish with you</span></div>
+  <nav aria-label="Sections">
+    <a href="#chart" data-v="chart">Chart</a>
+    <a href="#ask" data-v="ask">Ask</a>
+    <a href="#teach" data-v="teach">Teach</a>
+    <a href="#learned" data-v="learned">What it has learned</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+<!-- CHART -->
+<section class="view" id="v-chart">
+  <div class="bench">
+    <div class="stack">
+      <form class="panel stack" id="birthForm" autocomplete="off">
+        <h2>Birth details</h2>
+        <div class="field"><label for="bName">Name</label><input id="bName" placeholder="e.g. Himanshu"></div>
+        <div class="field sugg"><label for="bPlace">Birth place</label><input id="bPlace" placeholder="Start typing a city" aria-autocomplete="list"><ul id="placeList" hidden></ul></div>
+        <div class="row2">
+          <div class="field"><label for="bDate">Date</label><input id="bDate" type="date" required></div>
+          <div class="field"><label for="bTime">Time (local)</label><input id="bTime" type="time" required></div>
+        </div>
+        <details id="coordBox"><summary>Coordinates and time zone</summary>
+          <div class="row2" style="margin-top:10px">
+            <div class="field"><label for="bLat">Latitude (N +)</label><input id="bLat" type="number" step="0.0001"></div>
+            <div class="field"><label for="bLon">Longitude (E +)</label><input id="bLon" type="number" step="0.0001"></div>
+          </div>
+          <div class="field" style="margin-top:10px"><label for="bTz">UTC offset in hours</label><input id="bTz" type="number" step="0.25" value="5.5"></div>
+          <p class="hint" id="tzHint">Picking a city fills these in, using the offset in force on the birth date.</p>
+        </details>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn" type="submit">Cast chart</button>
+          <span class="status" id="castStatus"></span>
+        </div>
+      </form>
+      <div class="panel">
+        <h3>Saved charts</h3>
+        <div class="chips" id="savedCharts"><span class="empty">Charts you cast are saved here.</span></div>
+      </div>
+    </div>
+    <div class="stack" id="chartOut"><div class="panel empty">Loading the ephemeris…</div></div>
+  </div>
+</section>
+
+<!-- ASK -->
+<section class="view" id="v-ask" hidden>
+  <div class="bench">
+    <div class="stack">
+      <div class="panel stack">
+        <h2>Ask about a chart</h2>
+        <div class="field"><label for="askChart">Chart</label><select id="askChart"></select></div>
+        <div>
+          <label>Topic</label>
+          <div class="chips" id="askTopics">
+            <button class="chip" type="button" data-q="">Overall reading</button>
+            <button class="chip" type="button" data-q="What does this chart show about career and work?">Career</button>
+            <button class="chip" type="button" data-q="What does this chart show about marriage and relationships?">Marriage</button>
+            <button class="chip" type="button" data-q="What does the current mahadasha and antardasha bring?">Current dasha</button>
+            <button class="chip" type="button" data-q="What does this chart show about wealth?">Wealth</button>
+          </div>
+        </div>
+        <div class="field"><label for="askQ">Your question</label><textarea id="askQ" placeholder="Leave empty for an overall reading"></textarea></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn" id="askBtn" type="button">Analyze</button>
+          <button class="btn ghost" id="stopBtn" type="button" hidden>Stop</button>
+          <span class="status" id="askStatus"></span>
+        </div>
+        <p class="hint">AstroBuddy cites the rules you taught as <span class="cite">R12</span> and marks anything you did not teach as <span class="gen">(general knowledge)</span>.</p>
+      </div>
+    </div>
+    <div class="stack" id="askOut">
+      <div class="panel empty">Pick a chart and a topic, then press Analyze. The reading appears here, followed by a box where you can correct it.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TEACH -->
+<section class="view" id="v-teach" hidden>
+  <div class="bench">
+    <form class="panel stack" id="ruleForm">
+      <h2 id="ruleFormTitle">Teach a rule</h2>
+      <div class="field"><label for="rCond">If (condition)</label><input id="rCond" placeholder="Saturn in house 7" required></div>
+      <div class="field"><label for="rInt">Then (interpretation)</label><textarea id="rInt" placeholder="Marriage tends to come later; a mature partner." required></textarea></div>
+      <div class="row2">
+        <div class="field"><label for="rTopic">Topic</label><input id="rTopic" placeholder="marriage"></div>
+        <div class="field"><label for="rSrc">Source</label><input id="rSrc" placeholder="BPHS / my teacher"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn" type="submit" id="ruleSave">Save rule</button>
+        <button class="btn ghost" type="button" id="ruleCancel" hidden>Cancel edit</button>
+        <span class="status" id="ruleStatus"></span>
+      </div>
+      <details><summary>How to word conditions so they match</summary>
+        <p class="hint">Use the phrases shown under "Chart factors" on a chart, for example: <span class="mono">Saturn in house 7</span>, <span class="mono">Venus in Pisces</span>, <span class="mono">Moon in Rohini</span>, <span class="mono">Jupiter exalted</span>, <span class="mono">lord of house 10 in house 9</span>, <span class="mono">Jupiter aspects moon</span>, <span class="mono">Moon conjunct Mars</span>, <span class="mono">Saturn yogakaraka</span>, <span class="mono">Gajakesari yoga</span>, <span class="mono">Rahu mahadasha</span>. "7th house" also works.</p>
+      </details>
+    </form>
+    <div class="panel">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+        <h2 style="margin:0;margin-right:auto">Rules taught <span class="mono" id="ruleCount" style="color:var(--mute);font-size:16px"></span></h2>
+        <input id="ruleSearch" placeholder="Filter rules" style="max-width:220px">
+      </div>
+      <div id="ruleList"><p class="empty">Loading rules…</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- LEARNED -->
+<section class="view" id="v-learned" hidden>
+  <div class="stack">
+    <div class="panel">
+      <div class="stat" id="stats"></div>
+    </div>
+    <div class="panel">
+      <h2>Your corrections</h2>
+      <p class="hint" style="margin-top:0">Every correction is sent with each new analysis, and it overrides the starter rules.</p>
+      <div id="corrList"><p class="empty">No corrections yet. After an analysis, tell AstroBuddy what it got wrong.</p></div>
+    </div>
+    <div class="panel">
+      <h2>Take it with you</h2>
+      <p class="hint" style="margin-top:0">Download everything you have taught as JSON. This is the dataset a custom fine-tuned model can be trained on later.</p>
+      <button class="btn ghost" id="exportBtn" type="button">Download knowledge (JSON)</button> <span class="status" id="exportStatus"></span>
+    </div>
+  </div>
+</section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script>
+/* Jyotish engine: sidereal (Lahiri) chart, Parashari layer, rule matching. Needs global Astronomy. */
+const J = (() => {
+const SIGNS=["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+const SIGN_LORDS=["Mars","Venus","Mercury","Moon","Sun","Mercury","Venus","Mars","Jupiter","Saturn","Saturn","Jupiter"];
+const NAKS=["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"];
+const DASHA=[["Ketu",7],["Venus",20],["Sun",6],["Moon",10],["Mars",7],["Rahu",18],["Jupiter",16],["Saturn",19],["Mercury",17]];
+const YEAR=365.25*86400000;
+const EXALT={Sun:0,Moon:1,Mars:9,Mercury:5,Jupiter:3,Venus:11,Saturn:6,Rahu:1,Ketu:7};
+const OWN={Sun:[4],Moon:[3],Mars:[0,7],Mercury:[2,5],Jupiter:[8,11],Venus:[1,6],Saturn:[9,10],Rahu:[],Ketu:[]};
+const MT={Sun:[4,0,20],Moon:[1,3,30],Mars:[0,0,12],Mercury:[5,15,20],Jupiter:[8,0,10],Venus:[6,0,15],Saturn:[10,0,20]};
+const SEVEN=["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"];
+const D2R=Math.PI/180, norm=x=>((x%360)+360)%360;
+
+function dignity(name,sign,lon){
+  if(EXALT[name]===sign)return"exalted";
+  if(name in EXALT&&(EXALT[name]+6)%12===sign)return"debilitated";
+  const m=MT[name]; if(m&&Math.floor(lon/30)===m[0]&&lon%30>=m[1]&&lon%30<m[2])return"moolatrikona";
+  if((OWN[name]||[]).includes(sign))return"own sign";
+  return"";
+}
+// Lahiri ayanamsa (mean), cubic fit to Swiss Ephemeris SIDM_LAHIRI 1700-2200 (error < 0.01").
+function ayanamsaMean(T){return 23.857092360735482+1.3968879247565578*T+0.0003070808099396047*T*T+1.586904157710585e-08*T*T*T}
+function nutation(T){ // main IAU1980 terms, degrees
+  const Om=(125.04452-1934.136261*T)*D2R, L=(280.4665+36000.7698*T)*D2R, Lp=(218.3165+481267.8813*T)*D2R;
+  const dpsi=(-17.20*Math.sin(Om)-1.32*Math.sin(2*L)-0.23*Math.sin(2*Lp)+0.21*Math.sin(2*Om))/3600;
+  const deps=(9.20*Math.cos(Om)+0.57*Math.cos(2*L)+0.10*Math.cos(2*Lp)-0.09*Math.cos(2*Om))/3600;
+  return{dpsi,deps};
+}
+const BODIES={Sun:"Sun",Mercury:"Mercury",Venus:"Venus",Mars:"Mars",Jupiter:"Jupiter",Saturn:"Saturn"};
+function tropical(name,date){
+  const t=Astronomy.MakeTime(date);
+  if(name==="Moon")return Astronomy.EclipticGeoMoon(t).lon;
+  return Astronomy.Ecliptic(Astronomy.GeoVector(Astronomy.Body[BODIES[name]],t,true)).elon;
+}
+function meanNode(T){return norm(125.04452-1934.136261*T+0.0020708*T*T+T*T*T/450000)}
+
+function placement(name,lon,lagnaSign,retro){
+  const sign=Math.floor(lon/30), span=360/27, ni=Math.floor(lon/span);
+  return{name,longitude:+lon.toFixed(4),sign:SIGNS[sign],sign_index:sign,degree_in_sign:+(lon%30).toFixed(2),
+    house:((sign-lagnaSign+12)%12)+1,nakshatra:NAKS[ni],pada:Math.floor((lon%span)/(span/4))+1,nakshatra_lord:DASHA[ni%9][0],
+    retrograde:!!retro,dignity:name==="Lagna"?"":dignity(name,sign,lon),navamsa_sign:SIGNS[Math.floor(lon/(30/9))%12],
+    lord_of_houses:SIGN_LORDS.map((l,s)=>l===name?((s-lagnaSign+12)%12)+1:0).filter(Boolean).sort((a,b)=>a-b)};
+}
+function iso(d){return d.toISOString().slice(0,10)}
+function vimshottari(moonLon,birth){
+  const span=360/27, idx=Math.floor(moonLon/span), si=idx%9, frac=(moonLon%span)/span;
+  let t=new Date(birth.getTime()-frac*DASHA[si][1]*YEAR); const out=[];
+  for(let k=0;k<9;k++){const[ml,my]=DASHA[(si+k)%9];const end=new Date(t.getTime()+my*YEAR);const ads=[];let at=t;
+    for(let j=0;j<9;j++){const[al,ay]=DASHA[(si+k+j)%9];const ae=new Date(at.getTime()+my*ay/120*YEAR);ads.push({lord:al,start:iso(at),end:iso(ae)});at=ae}
+    out.push({lord:ml,start:iso(t),end:iso(end),antardashas:ads});t=end}
+  return out;
+}
+function computeChart({name,date,time,utc_offset,latitude,longitude,place}){
+  const [Y,M,D]=date.split("-").map(Number),[h,mi]=time.split(":").map(Number);
+  const utc=new Date(Date.UTC(Y,M-1,D,h,mi)-utc_offset*3600000);
+  if(Y<100)utc.setUTCFullYear(Y);
+  const T=(Astronomy.MakeTime(utc).tt)/36525;
+  const nut=nutation(T), ayanT=ayanamsaMean(T)+nut.dpsi;
+  // Ascendant
+  const gast=Astronomy.SiderealTime(utc)*15, ramc=norm(gast+longitude)*D2R;
+  const eps=(23.439291-0.0130042*T+nut.deps)*D2R, phi=latitude*D2R;
+  const ascTrop=norm(Math.atan2(Math.cos(ramc),-(Math.sin(ramc)*Math.cos(eps)+Math.tan(phi)*Math.sin(eps)))/D2R);
+  const asc=norm(ascTrop-ayanT), ls=Math.floor(asc/30);
+  const lagna=placement("Lagna",asc,ls,false);
+  const planets=[];
+  for(const n of ["Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn"]){
+    const lon=norm(tropical(n,utc)-ayanT);
+    const a=tropical(n,new Date(utc.getTime()-43200000)),b=tropical(n,new Date(utc.getTime()+43200000));
+    const speed=((b-a+540)%360)-180;
+    planets.push(placement(n,lon,ls,speed<0));
+  }
+  const rahu=norm(meanNode(T)-ayanamsaMean(T));
+  planets.push(placement("Rahu",rahu,ls,true),placement("Ketu",norm(rahu+180),ls,true));
+  const moon=planets.find(p=>p.name==="Moon");
+  return{name,place:place||"",birth_local:`${date}T${time}`,utc_offset,latitude,longitude,ayanamsa:+ayanT.toFixed(4),lagna,planets,dashas:vimshottari(moon.longitude,utc)};
+}
+function currentDasha(c,on){on=on||iso(new Date());
+  for(const md of c.dashas)if(md.start<=on&&on<md.end){for(const ad of md.antardashas)if(ad.start<=on&&on<ad.end)return[md.lord,ad.lord];return[md.lord,""]}
+  return["",""];}
+
+/* ---------- Parashari layer ---------- */
+const SPECIAL={Mars:[4,7,8],Jupiter:[5,7,9],Saturn:[3,7,10]}; let NODE_ASPECTS=[7];
+const KENDRA=[1,4,7,10],TRIKONA=[1,5,9],DUSTHANA=[6,8,12],NAT_BEN=["Jupiter","Venus","Mercury","Moon"];
+const MAHA={Mars:"Ruchaka",Mercury:"Bhadra",Jupiter:"Hamsa",Venus:"Malavya",Saturn:"Sasa"};
+const P=c=>Object.fromEntries(c.planets.map(p=>[p.name,p]));
+const lordOf=(c,h)=>SIGN_LORDS[(c.lagna.sign_index+h-1)%12];
+function aspectHouses(pl,h){return(["Rahu","Ketu"].includes(pl)?NODE_ASPECTS:(SPECIAL[pl]||[7])).map(o=>((h+o-2)%12)+1).sort((a,b)=>a-b)}
+function aspects(c){const out=[];for(const p of c.planets)for(const h of aspectHouses(p.name,p.house))out.push({planet:p.name,house:h,planets:c.planets.filter(q=>q.house===h&&q.name!==p.name).map(q=>q.name)});return out}
+const aspectsBetween=(c,a,b)=>{const p=P(c);return aspectHouses(a,p[a].house).includes(p[b].house)};
+function functionalNature(c){const out={};
+  for(const n of SEVEN){const owned=[];for(let h=1;h<=12;h++)if(lordOf(c,h)===n)owned.push(h);
+    const has=s=>owned.some(h=>s.includes(h));
+    const kendra=has([4,7,10]),tri=has(TRIKONA),bad=has([3,6,11]),eighth=owned.includes(8)&&!owned.includes(1)&&!["Sun","Moon"].includes(n);
+    out[n]=kendra&&has([5,9])?"yogakaraka":tri&&!bad&&!eighth?"functional benefic":(bad||eighth)&&!tri?"functional malefic":tri?"mixed":kendra&&NAT_BEN.includes(n)?"neutral (kendradhipati dosha)":"neutral"}
+  return out}
+function yogas(c){const p=P(c),mh=p.Moon.house,found=[],add=(name,description,planets)=>found.push({name,description,planets});
+  const fm=h=>((h-mh+12)%12)+1;
+  for(const[pl,y]of Object.entries(MAHA)){const q=p[pl];if(KENDRA.includes(q.house)&&["own sign","exalted","moolatrikona"].includes(q.dignity))add(`${y} yoga`,`${pl} ${q.dignity} in house ${q.house} (a kendra)`,[pl])}
+  if(KENDRA.includes(fm(p.Jupiter.house)))add("Gajakesari yoga",`Jupiter in house ${fm(p.Jupiter.house)} from the Moon`,["Jupiter","Moon"]);
+  if(p.Sun.sign===p.Mercury.sign)add("Budhaditya yoga",`Sun and Mercury together in ${p.Sun.sign}`,["Sun","Mercury"]);
+  if(p.Moon.sign===p.Mars.sign)add("Chandra-Mangala yoga",`Moon and Mars together in ${p.Moon.sign}`,["Moon","Mars"]);
+  const seen=new Set();
+  for(const a of SEVEN){const b=SIGN_LORDS[p[a].sign_index];if(b!==a&&SEVEN.includes(b)&&SIGN_LORDS[p[b].sign_index]===a&&!seen.has(b+a)){seen.add(a+b);
+    add("Parivartana yoga",`${a} and ${b} exchange signs (${p[a].sign} / ${p[b].sign}), linking houses ${p[a].house} and ${p[b].house}`,[a,b])}}
+  const L={};for(let h=1;h<=12;h++)L[h]=lordOf(c,h);const pairs=new Set();
+  for(const k of KENDRA)for(const t of TRIKONA){const a=L[k],b=L[t];if(a===b||k===t)continue;const key=[a,b].sort().join();if(pairs.has(key))continue;
+    let how=null;if(p[a].sign===p[b].sign)how=`together in house ${p[a].house}`;else if(aspectsBetween(c,a,b)&&aspectsBetween(c,b,a))how="in mutual aspect";
+    else if(SIGN_LORDS[p[a].sign_index]===b&&SIGN_LORDS[p[b].sign_index]===a)how="exchanging signs";
+    if(how){pairs.add(key);add("Raja yoga",`${a} (lord of ${k}) and ${b} (lord of ${t}) ${how}`,[a,b])}}
+  for(const[n,v]of Object.entries(functionalNature(c)))if(v==="yogakaraka")add("Yogakaraka",`${n} owns both a kendra and a trikona for ${c.lagna.sign} lagna (placed in house ${p[n].house})`,[n]);
+  for(const w of[2,11])for(const t of[5,9]){const a=L[w],b=L[t];if(a!==b&&p[a].sign===p[b].sign)add("Dhana yoga",`${a} (lord of ${w}) with ${b} (lord of ${t}) in house ${p[a].house}`,[a,b])}
+  for(const[h,y]of[[6,"Harsha"],[8,"Sarala"],[12,"Vimala"]]){const l=L[h];if(DUSTHANA.includes(p[l].house)&&L[1]!==l)add(`Vipareeta Raja yoga (${y})`,`${l}, lord of ${h}, sits in house ${p[l].house}`,[l])}
+  for(const pl of SEVEN){const q=p[pl];if(q.dignity!=="debilitated")continue;const ex=(q.sign_index+6)%12;
+    for(const hlp of new Set([SIGN_LORDS[q.sign_index],SIGN_LORDS[ex]])){const hp=p[hlp];if(KENDRA.includes(hp.house)||KENDRA.includes(fm(hp.house))){
+      add("Neecha Bhanga",`${pl} debilitated in ${q.sign}, but ${hlp} (lord of ${hlp===SIGN_LORDS[q.sign_index]?SIGNS[q.sign_index]:SIGNS[ex]}) is in a kendra from the lagna or Moon`,[pl,hlp]);break}}}
+  if(!SEVEN.filter(q=>!["Sun","Moon"].includes(q)).some(q=>[2,12].includes(fm(p[q].house))))add("Kemadruma yoga","No planet in the 2nd or 12th from the Moon (check cancellations)",["Moon"]);
+  return found}
+
+function factors(c){const t=new Set([`lagna:${c.lagna.sign.toLowerCase()}`,`${c.lagna.sign.toLowerCase()} lagna`]);
+  for(const p of c.planets){const n=p.name.toLowerCase();[`${n} in house ${p.house}`,`${n} in ${p.sign.toLowerCase()}`,`${n} in ${p.nakshatra.toLowerCase()}`].forEach(x=>t.add(x));
+    if(p.dignity)t.add(`${n} ${p.dignity}`);if(p.retrograde&&!["Rahu","Ketu"].includes(p.name))t.add(`${n} retrograde`);
+    for(const h of p.lord_of_houses)t.add(`lord of house ${h} in house ${p.house}`)}
+  const[md,ad]=currentDasha(c);if(md){t.add(`${md.toLowerCase()} mahadasha`);t.add(`${md.toLowerCase()}-${ad.toLowerCase()} dasha`);t.add(`${ad.toLowerCase()} antardasha`)}
+  const p=P(c);
+  for(const a of aspects(c)){const n=a.planet.toLowerCase();t.add(`${n} aspects house ${a.house}`);if(a.house===1)t.add(`${n} aspects lagna`);for(const x of a.planets)t.add(`${n} aspects ${x.toLowerCase()}`)}
+  const names=c.planets.map(q=>q.name);
+  names.forEach((a,i)=>names.slice(i+1).forEach(b=>{if(p[a].sign===p[b].sign){const A=a.toLowerCase(),B=b.toLowerCase();[`${A} conjunct ${B}`,`${B} conjunct ${A}`,`${A} with ${B}`,`${B} with ${A}`].forEach(x=>t.add(x))}}));
+  for(const[n,v]of Object.entries(functionalNature(c)))t.add(`${n.toLowerCase()} ${v.split(" (")[0]}`);
+  for(const y of yogas(c)){t.add(y.name.toLowerCase());t.add(y.name.toLowerCase().split(" (")[0])}
+  return[...t].sort()}
+
+function summary(c){const L=[`Native: ${c.name}${c.place?", born in "+c.place:""}, ${c.birth_local} (UTC${c.utc_offset>=0?"+":""}${c.utc_offset}), lat ${c.latitude}, lon ${c.longitude}. Lahiri ayanamsa ${c.ayanamsa}.`,
+  `Lagna: ${c.lagna.sign} ${c.lagna.degree_in_sign}° (${c.lagna.nakshatra} pada ${c.lagna.pada}), Navamsa lagna ${c.lagna.navamsa_sign}.`,"Planets (whole-sign houses):"];
+  for(const p of c.planets){const ex=[p.dignity,p.retrograde&&!["Rahu","Ketu"].includes(p.name)?"retrograde":""].filter(Boolean).join(", ");
+    L.push(`- ${p.name}: ${p.sign} ${p.degree_in_sign}°, house ${p.house}, ${p.nakshatra} pada ${p.pada} (star lord ${p.nakshatra_lord}), D9 ${p.navamsa_sign}${p.lord_of_houses.length?"; lord of "+p.lord_of_houses.join(", "):""}${ex?"; "+ex:""}`)}
+  L.push("Graha drishti (houses aspected):");const by={};for(const a of aspects(c))(by[a.planet]=by[a.planet]||[]).push(a.house+(a.planets.length?` (${a.planets.join(", ")})`:""));
+  for(const[k,v]of Object.entries(by))L.push(`- ${k} aspects ${v.join(", ")}`);
+  L.push(`Functional nature for ${c.lagna.sign} lagna: `+Object.entries(functionalNature(c)).map(([k,v])=>`${k} ${v}`).join("; "));
+  const ys=yogas(c);L.push(ys.length?"Yogas detected (verify strength and cancellations):":"Yogas detected: none of the core yogas checked.");ys.forEach(y=>L.push(`- ${y.name}: ${y.description}`));
+  const[md,ad]=currentDasha(c);L.push(md?`Current Vimshottari dasha: ${md} mahadasha / ${ad} antardasha.`:"Current date is outside the 120-year Vimshottari cycle.");
+  L.push("Mahadasha sequence: "+c.dashas.map(d=>`${d.lord} ${d.start.slice(0,4)}-${d.end.slice(0,4)}`).join("; "));
+  return L.join("\n")}
+
+/* ---------- rule matching ---------- */
+const STOP=new Set("a an the of in on and or is are to for with by at as be it its this that from will gives give can may when if".split(" "));
+const words=s=>new Set((String(s||"").toLowerCase().match(/[a-z0-9]+/g)||[]).filter(w=>!STOP.has(w)));
+function relevantRules(rules,fs,question,limit=40){
+  const fw=new Set();fs.forEach(f=>words(f).forEach(w=>fw.add(w)));const qw=words(question);const out=[];
+  for(const r of rules){let cond=" "+String(r.condition).toLowerCase().replace(/\s+/g," ")+" ";
+    cond=cond.replace(/\b(the|a)\s+/g,"").replace(/(\d+)(st|nd|rd|th)\s+house/g,"house $1").replace(/house\s+(\d+)\s*(st|nd|rd|th)\b/g,"house $1");
+    let s=fs.reduce((n,f)=>n+(cond.includes(` ${f} `)||cond.includes(` ${f},`)?10:0),0);
+    s+=[...words(r.condition)].filter(w=>fw.has(w)).length*0.5;
+    const iw=new Set([...words(r.interpretation),...words(r.topic)]);const q=[...qw].filter(w=>iw.has(w)).length;s+=q;
+    if(s>=10||q>=1)out.push({...r,score:s})}
+  return out.sort((a,b)=>b.score-a.score).slice(0,limit)}
+
+const SYSTEM=`You are a student of Parashari Jyotish (the system of Brihat Parashara Hora Shastra), learning from your teacher. Use the sidereal (Lahiri) chart data given; never recompute positions.
+Reason the Parashari way: lagna and lagna lord first, then house lords and their placements, graha drishti, functional benefics/malefics for this lagna, yogas, dignity, then the Vimshottari dasha for timing. Use the Moon chart and D9 to confirm. The yogas listed are detected mechanically: confirm their strength before relying on them.
+
+How to reason:
+1. The teacher's rules are your primary source. When a rule's condition is met by the chart, apply it and cite it as [R:<id>]. Check that the condition is truly met before citing.
+2. The teacher's past corrections override anything else. Follow them.
+3. You may add general classical knowledge where no taught rule covers a point, but mark each such statement as (general knowledge) so the teacher can confirm or correct it.
+4. Weigh conflicting indications, mention dignity, house lordship, aspects and the current dasha, and say how confident you are.
+5. End with a section "Questions for my teacher": 1-3 things you were unsure about, so the teacher can teach you a new rule.
+Be concrete and kind. Do not make fatalistic, medical or legal predictions. Write in plain prose with short headings (lines starting with ##) and no tables.`;
+
+function buildPrompt(chart,rules,corrections,question){
+  const rel=relevantRules(rules,factors(chart),question);
+  const parts=["## Chart\n"+summary(chart)];
+  parts.push("## Teacher's rules that may apply\n"+(rel.length?rel.map(r=>`[R:${r.id}] IF ${r.condition} THEN ${r.interpretation}${r.source?` (source: ${r.source})`:""}`).join("\n"):"(none taught yet for these placements)"));
+  if(corrections.length)parts.push("## Teacher's past corrections (follow these)\n"+corrections.slice(0,25).map(c=>`- On "${(c.question||"general analysis").slice(0,80)}": ${c.correction}`).join("\n"));
+  parts.push("## Question\n"+(question||"Give an overall analysis of this chart."));
+  return{prompt:SYSTEM+"\n\n---\n\n"+parts.join("\n\n"),rules:rel}}
+
+return{SIGNS,computeChart,currentDasha,aspects,functionalNature,yogas,factors,summary,relevantRules,buildPrompt};
+})();
+
+
+</script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const AB={Sun:"Su",Moon:"Mo",Mars:"Ma",Mercury:"Me",Jupiter:"Ju",Venus:"Ve",Saturn:"Sa",Rahu:"Ra",Ketu:"Ke"};
+const S={db:null,sample:null,downloads:null,rules:[],charts:[],corrections:[],current:null,currentId:null,places:null,placeTz:"",lastAnalysis:null};
+const EXAMPLE={name:"Example chart",place:"Delhi, India",date:"1990-01-15",time:"10:30",utc_offset:5.5,latitude:28.6519,longitude:77.2315};
+
+/* ---------- views ---------- */
+function show(){const v=(location.hash||"#chart").slice(1);const ok=["chart","ask","teach","learned"].includes(v)?v:"chart";
+  document.querySelectorAll(".view").forEach(s=>s.hidden=s.id!=="v-"+ok);
+  document.querySelectorAll("nav a").forEach(a=>a.dataset.v===ok?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));}
+addEventListener("hashchange",show);show();
+
+/* ---------- places ---------- */
+async function loadPlaces(){if(S.places)return S.places;try{const r=await fetch("places.json");const d=await r.json();
+  S.places=d.rows.split("\n").map(l=>{const[n,cc,la,lo,tz,alt]=l.split("|");const names=[n,...(alt?alt.split(";"):[])].map(fold);return{name:n,country:d.cc[cc]||cc,lat:+la,lon:+lo,tz:d.tz[+tz],names}})}catch(e){return[]}return S.places}
+const fold=s=>s.normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+function offsetFor(tz,date,time){try{const[Y,M,D]=date.split("-").map(Number),[h,m]=time.split(":").map(Number);
+  let guess=Date.UTC(Y,M-1,D,h,m);for(let i=0;i<3;i++){const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date(guess)).map(x=>[x.type,x.value]));
+    const asUTC=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute);const off=asUTC-guess;guess=Date.UTC(Y,M-1,D,h,m)-off;if(i===2)return off/3600000}}catch(e){return null}}
+let placeTimer;
+$("bPlace").addEventListener("input",e=>{S.placeTz="";clearTimeout(placeTimer);placeTimer=setTimeout(async()=>{const q=fold(e.target.value.trim());const ul=$("placeList");
+  if(q.length<2){ul.hidden=true;return}const ps=await loadPlaces();const hits=[];
+  for(const p of ps){const exact=p.names.includes(q),pre=!exact&&p.names.some(n=>n.startsWith(q));if(exact||pre){hits.push([exact?0:1,p]);if(hits.length>200)break}}
+  hits.sort((a,b)=>a[0]-b[0]);const top=hits.slice(0,8).map(h=>h[1]);
+  ul.innerHTML=top.map((p,i)=>`<li><button type="button" data-i="${i}">${esc(p.name)}, ${esc(p.country)} <small class="mono">${p.lat.toFixed(2)}, ${p.lon.toFixed(2)}</small></button></li>`).join("")||`<li class="hint" style="padding:6px 8px">No city found. Type the coordinates and offset under "Coordinates and time zone".</li>`;
+  ul.hidden=false;ul._top=top},150)});
+$("placeList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const p=$("placeList")._top[+b.dataset.i];
+  $("bPlace").value=`${p.name}, ${p.country}`;$("bLat").value=p.lat;$("bLon").value=p.lon;S.placeTz=p.tz;$("placeList").hidden=true;updateTz()});
+document.addEventListener("click",e=>{if(!e.target.closest(".sugg"))$("placeList").hidden=true});
+function updateTz(){if(!S.placeTz)return;const d=$("bDate").value,t=$("bTime").value;if(!d||!t){$("tzHint").textContent=`Time zone ${S.placeTz}. The offset is set once date and time are filled in.`;return}
+  const off=offsetFor(S.placeTz,d,t);if(off!=null){$("bTz").value=off;$("tzHint").textContent=`${S.placeTz}: UTC${off>=0?"+":""}${off} on that date.`}}
+["bDate","bTime"].forEach(id=>$(id).addEventListener("change",updateTz));
+$("bTz").addEventListener("input",()=>{S.placeTz="";$("tzHint").textContent="Offset set by hand."});
+
+/* ---------- chart rendering ---------- */
+function kundali(c){const S_=300,h=150,q=75;const P={1:[h,q],2:[q,q/2.3],3:[q/2.3,q],4:[q,h],5:[q/2.3,3*q],6:[q,S_-q/2.3],7:[h,3*q],8:[3*q,S_-q/2.3],9:[S_-q/2.3,3*q],10:[3*q,h],11:[S_-q/2.3,q],12:[3*q,q/2.3]};
+  const by={};c.planets.forEach(p=>(by[p.house]=by[p.house]||[]).push(AB[p.name]+(p.retrograde&&!["Rahu","Ketu"].includes(p.name)?"℞":"")));
+  let t="";for(let H=1;H<=12;H++){const[x,y]=P[H],sign=(c.lagna.sign_index+H-1)%12+1,list=by[H]||[],top=y-6-(list.length-1)*6.5;
+    t+=`<text class="num" x="${x}" y="${top-6}" text-anchor="middle">${sign}</text>`;if(H===1)t+=`<text class="asc" x="${x}" y="${top-17}" text-anchor="middle">Asc</text>`;
+    list.forEach((n,i)=>t+=`<text class="pl" x="${x}" y="${top+8+i*13}" text-anchor="middle">${n}</text>`)}
+  return`<svg class="kundali" viewBox="-2 -2 304 304" role="img" aria-label="North Indian chart, ${c.lagna.sign} lagna"><rect class="frame" x="0" y="0" width="300" height="300"/><line class="frame" x1="0" y1="0" x2="300" y2="300"/><line class="frame" x1="300" y1="0" x2="0" y2="300"/><polygon class="frame" points="150,0 300,150 150,300 0,150"/>${t}</svg>`}
+const tagFor=d=>d?`<span class="tag ${d.split(" ")[0]==="own"?"own":d}">${esc(d)}</span>`:"";
+const natTag=v=>{const k=v.includes("benefic")?"benefic":v.includes("malefic")?"malefic":v==="yogakaraka"?"yogakaraka":v.startsWith("mixed")?"mixed":"neutral";return`<span class="tag ${k}">${esc(v)}</span>`};
+function renderChart(c,id){S.current=c;S.currentId=id;const[md,ad]=J.currentDasha(c),ys=J.yogas(c),fn=J.functionalNature(c),asp=J.aspects(c),fs=J.factors(c);
+  const rows=[c.lagna,...c.planets].map(p=>`<tr><td><b>${p.name}</b>${p.retrograde&&!["Rahu","Ketu","Lagna"].includes(p.name)?" ℞":""}</td><td>${p.sign}</td><td class="num">${p.degree_in_sign.toFixed(2)}°</td><td class="num">${p.name==="Lagna"?1:p.house}</td><td>${p.nakshatra} <span class="mono" style="color:var(--mute)">${p.pada}</span></td><td>${p.navamsa_sign}</td><td>${tagFor(p.dignity)}</td></tr>`).join("");
+  const byP={};asp.forEach(a=>(byP[a.planet]=byP[a.planet]||[]).push(a.house+(a.planets.length?` (${a.planets.map(x=>AB[x]).join(" ")})`:"")));
+  const total=new Date(c.dashas.at(-1).end)-new Date(c.dashas[0].start);
+  const bar=c.dashas.map(d=>`<div class="${d.lord===md?"now":""}" style="flex:${(new Date(d.end)-new Date(d.start))/total}" title="${d.lord} ${d.start} to ${d.end}">${AB[d.lord]}</div>`).join("");
+  const curMd=c.dashas.find(d=>d.lord===md);
+  $("chartOut").innerHTML=`
+  ${id?"":`<div class="banner">${c.name==="Example chart"?"This is an example chart (Delhi, 15 Jan 1990, 10:30) so you can see the layout. Cast your own on the left.":"Not saved yet."}</div>`}
+  <div class="panel fade"><div class="chart-top">${kundali(c)}<div class="stack" style="gap:6px">
+    <h2 style="margin:0">${esc(c.name)}</h2>
+    <div class="hint" style="margin:0">${esc(c.place||"")}${c.place?" · ":""}<span class="mono">${c.birth_local.replace("T"," ")}</span> · UTC${c.utc_offset>=0?"+":""}${c.utc_offset} · <span class="mono">${(+c.latitude).toFixed(2)}, ${(+c.longitude).toFixed(2)}</span></div>
+    <div><b>${c.lagna.sign} lagna</b> <span class="mono">${c.lagna.degree_in_sign.toFixed(2)}°</span>, ${c.lagna.nakshatra} pada ${c.lagna.pada} · Lahiri ayanamsa <span class="mono">${c.ayanamsa.toFixed(4)}°</span></div>
+    <div>${md?`Now running <b>${md}</b> mahadasha, <b>${ad}</b> antardasha`:"Today is outside the 120-year Vimshottari cycle."}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button class="btn" type="button" id="goAsk">Analyze this chart</button>${id?`<button class="btn ghost small" type="button" id="delChart">Delete chart</button>`:""}</div>
+    <p class="hint">Numbers in the chart are signs (1 = Aries). ℞ = retrograde.</p></div></div>
+  <div class="tablewrap" style="margin-top:14px"><table><thead><tr><th>Graha</th><th>Sign</th><th>Degree</th><th>House</th><th>Nakshatra · pada</th><th>D9</th><th>Dignity</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+  <div class="grid3">
+    <div class="panel"><h3>Yogas found</h3>${ys.map(y=>`<div class="yoga"><b>${esc(y.name)}</b><p>${esc(y.description)}</p></div>`).join("")||`<p class="empty">None of the core yogas are present.</p>`}<p class="hint">Found by rule of thumb. Judge their strength and any cancellation yourself.</p></div>
+    <div class="panel"><h3>Functional nature for ${c.lagna.sign} lagna</h3><div class="tablewrap"><table><tbody>${Object.entries(fn).map(([k,v])=>`<tr><td>${k}</td><td>${natTag(v)}</td></tr>`).join("")}</tbody></table></div>
+      <h3 style="margin-top:16px">Graha drishti</h3><div class="tablewrap"><table><tbody>${Object.entries(byP).map(([k,v])=>`<tr><td>${k}</td><td class="num">${v.join(", ")}</td></tr>`).join("")}</tbody></table></div></div>
+  </div>
+  <div class="panel"><h3>Vimshottari mahadashas</h3><div class="dasha">${bar}</div><div class="dasha-legend"><span>${c.dashas[0].start.slice(0,4)}</span><span>${c.dashas.at(-1).end.slice(0,4)}</span></div>
+    ${curMd?`<h3 style="margin-top:16px">${md} mahadasha antardashas</h3><div class="tablewrap"><table><tbody>${curMd.antardashas.map(a=>`<tr${a.lord===ad?' style="font-weight:700"':""}><td>${a.lord}</td><td class="num">${a.start}</td><td class="num">${a.end}</td></tr>`).join("")}</tbody></table></div>`:""}</div>
+  <div class="panel"><details><summary>Chart factors (${fs.length}): phrases your rules can match</summary><p class="mono" style="font-size:13px;line-height:1.8;margin-bottom:0">${fs.map(esc).join(" · ")}</p></details></div>`;
+  $("goAsk").onclick=()=>{if(id)$("askChart").value=id;location.hash="ask"};
+  if(id)$("delChart").onclick=e=>confirmBtn(e.target,"Confirm delete",async()=>{await S.db.collection("charts").doc(id).delete();renderChart(J.computeChart(EXAMPLE),null)});
+}
+function confirmBtn(btn,label,fn){if(btn.dataset.armed){fn();return}btn.dataset.armed="1";const old=btn.textContent;btn.textContent=label;btn.classList.add("danger");
+  setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent=old;btn.classList.remove("danger")}},4000)}
+
+$("birthForm").addEventListener("submit",async e=>{e.preventDefault();const st=$("castStatus");st.className="status";
+  const inp={name:$("bName").value.trim()||"Unnamed",place:$("bPlace").value.trim(),date:$("bDate").value,time:$("bTime").value,utc_offset:+$("bTz").value,latitude:+$("bLat").value,longitude:+$("bLon").value};
+  if(!inp.date||!inp.time){st.textContent="Fill in the date and time.";st.className="status err";return}
+  if(!$("bLat").value||!$("bLon").value){st.textContent="Pick a birth place, or type latitude and longitude.";st.className="status err";$("coordBox").open=true;return}
+  let c;try{c=J.computeChart(inp)}catch(err){st.textContent="Could not compute the chart: "+err.message;st.className="status err";return}
+  let id=null;if(S.db){try{const ref=S.db.collection("charts").doc();await ref.set({...inp,created:new Date().toISOString()});id=ref.id;st.textContent="Saved."}catch(err){st.textContent="Chart cast, but it could not be saved.";st.className="status err"}}
+  else st.textContent="Chart cast. Saving is unavailable in this view.";
+  renderChart(c,id)});
+
+function renderSaved(){const el=$("savedCharts");
+  el.innerHTML=S.charts.length?S.charts.map(c=>`<button class="chip" type="button" data-id="${c.id}" aria-pressed="${c.id===S.currentId}">${esc(c.name)} <span class="mono" style="opacity:.7">${esc(c.date)}</span></button>`).join(""):`<span class="empty">Charts you cast are saved here.</span>`;
+  $("askChart").innerHTML=`<option value="__example">Example chart (Delhi 1990)</option>`+S.charts.map(c=>`<option value="${c.id}">${esc(c.name)} · ${esc(c.date)}</option>`).join("");
+  if(S.currentId)$("askChart").value=S.currentId; renderStats()}
+$("savedCharts").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const c=S.charts.find(x=>x.id===b.dataset.id);if(c){renderChart(J.computeChart(c),c.id);renderSaved()}});
+
+/* ---------- rules ---------- */
+const ruleNum=r=>r.n??r.id;
+function renderRules(){const f=fold($("ruleSearch").value.trim());$("ruleCount").textContent=S.rules.length;
+  const list=S.rules.filter(r=>!f||fold(`${r.condition} ${r.interpretation} ${r.topic} ${r.source}`).includes(f)).sort((a,b)=>(b.n||0)-(a.n||0));
+  $("ruleList").innerHTML=list.map(r=>`<div class="rule" data-id="${r.id}"><span class="id">R${ruleNum(r)}</span><div style="min-width:0"><div class="cond">If ${esc(r.condition)}</div><div>${esc(r.interpretation)}</div><div class="meta">${esc(r.topic)}${r.topic&&r.source?" · ":""}${esc(r.source)}</div></div><div class="acts"><button class="btn ghost small" data-act="edit" type="button">Edit</button><button class="btn ghost small" data-act="del" type="button">Delete</button></div></div>`).join("")
+   ||`<p class="empty">${S.rules.length?"No rule matches that filter.":"No rules yet. Teach the first one on the left."}</p>`;renderStats()}
+$("ruleSearch").addEventListener("input",renderRules);
+let editing=null;
+$("ruleList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const id=b.closest(".rule").dataset.id,r=S.rules.find(x=>x.id===id);
+  if(b.dataset.act==="edit"){editing=r;$("rCond").value=r.condition;$("rInt").value=r.interpretation;$("rTopic").value=r.topic||"";$("rSrc").value=r.source||"";$("ruleFormTitle").textContent=`Edit rule R${ruleNum(r)}`;$("ruleSave").textContent="Save changes";$("ruleCancel").hidden=false;$("rCond").focus()}
+  else confirmBtn(b,"Confirm",async()=>{try{await S.db.collection("rules").doc(id).delete()}catch(err){$("ruleStatus").textContent="Could not delete: "+(err.message||err.code)}})});
+function resetRuleForm(){editing=null;$("ruleForm").reset();$("ruleFormTitle").textContent="Teach a rule";$("ruleSave").textContent="Save rule";$("ruleCancel").hidden=true}
+$("ruleCancel").onclick=resetRuleForm;
+async function addRule(body){const n=Math.max(0,...S.rules.map(r=>+r.n||0))+1;const id="r"+String(n).padStart(4,"0");
+  await S.db.collection("rules").doc(id).set({...body,n,created:new Date().toISOString()});return n}
+$("ruleForm").addEventListener("submit",async e=>{e.preventDefault();const st=$("ruleStatus");if(!S.db){st.textContent="Saving is unavailable in this view.";return}
+  const body={condition:$("rCond").value.trim(),interpretation:$("rInt").value.trim(),topic:$("rTopic").value.trim(),source:$("rSrc").value.trim()};
+  try{if(editing){await S.db.collection("rules").doc(editing.id).update(body);st.textContent=`Rule R${ruleNum(editing)} updated.`}else{const n=await addRule(body);st.textContent=`Saved as R${n}.`}resetRuleForm()}
+  catch(err){st.textContent="Could not save: "+(err.message||err.code);st.className="status err"}});
+
+/* ---------- ask ---------- */
+let askCtl=null;
+$("askTopics").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;document.querySelectorAll("#askTopics .chip").forEach(x=>x.setAttribute("aria-pressed",x===b));$("askQ").value=b.dataset.q});
+function chartById(id){if(id==="__example"||!id)return J.computeChart(EXAMPLE);const c=S.charts.find(x=>x.id===id);return c?J.computeChart(c):null}
+function md2html(t,rules){const byN=Object.fromEntries(rules.map(r=>[String(ruleNum(r)),r]));
+  const inline=s=>esc(s).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\[R:?\s?(\d+)\]/g,(m,n)=>{const r=byN[n];return`<span class="cite" title="${r?esc("If "+r.condition+" then "+r.interpretation):"Rule "+n}">R${n}</span>`}).replace(/\(general knowledge\)/gi,'<span class="gen">(general knowledge)</span>');
+  const out=[];let list=false;for(const raw of t.split("\n")){const l=raw.trimEnd();
+    if(/^\s*[-*•]\s+/.test(l)){if(!list){out.push("<ul>");list=true}out.push("<li>"+inline(l.replace(/^\s*[-*•]\s+/,""))+"</li>");continue}
+    if(list){out.push("</ul>");list=false}
+    if(/^#{1,4}\s/.test(l))out.push("<h4>"+inline(l.replace(/^#+\s*/,""))+"</h4>");else if(l.trim())out.push("<p>"+inline(l)+"</p>")}
+  if(list)out.push("</ul>");return out.join("")}
+$("askBtn").onclick=async()=>{const st=$("askStatus");st.className="status";
+  if(!S.sample){st.textContent="Analysis by Claude is not available in this view. Open the page on claude.ai while signed in.";st.className="status err";return}
+  const cid=$("askChart").value,c=chartById(cid);if(!c){st.textContent="Pick a chart.";return}
+  const q=$("askQ").value.trim();const{prompt,rules}=J.buildPrompt(c,S.rules.map(r=>({...r,id:ruleNum(r)})),S.corrections,q);
+  $("askOut").innerHTML=`<div class="panel"><h2>${esc(c.name)} · ${esc(q||"Overall reading")}</h2><div class="answer" id="ansBody"><p class="status">Reading the chart…</p></div><p class="hint" id="ansRules"></p></div>`;
+  $("askBtn").disabled=true;$("stopBtn").hidden=false;st.textContent="Analyzing…";askCtl=new AbortController();
+  let text="";
+  try{const res=await S.sample(prompt,{modelTier:"complex",signal:askCtl.signal,onText:({text:t})=>{text=t;$("ansBody").innerHTML=md2html(t,S.rules)}});
+    text=res.text;$("ansBody").innerHTML=md2html(text,S.rules);st.textContent=res.truncated?"The answer was cut short.":"";
+    const used=rules.map(r=>"R"+r.id).join(", ");$("ansRules").textContent=used?`Rules sent with this question: ${used}.`:"No taught rule matched this chart yet.";
+    let aid=null;if(S.db){try{const ref=S.db.collection("analyses").doc();await ref.set({chartId:cid,chartName:c.name,question:q,answer:text,ruleIds:rules.map(r=>r.id),created:new Date().toISOString()});aid=ref.id}catch(e){}}
+    S.lastAnalysis={id:aid,question:q,chartName:c.name};renderCorrectBox()}
+  catch(err){if(err&&err.code==="not_granted"){st.textContent="Claude analysis was not allowed. You can allow it from this page's permissions.";}
+    else if(err&&err.code==="rate_limited"){st.textContent="Too many requests just now. Wait a minute and try again.";}
+    else if(askCtl.signal.aborted){st.textContent="Stopped.";if(text)$("ansBody").innerHTML=md2html(text,S.rules)}
+    else{st.textContent="The analysis failed: "+(err&&err.message||err);}st.className="status err"}
+  finally{$("askBtn").disabled=false;$("stopBtn").hidden=true}};
+$("stopBtn").onclick=()=>askCtl&&askCtl.abort();
+function renderCorrectBox(){const box=document.createElement("form");box.className="panel stack";box.id="corrForm";
+  box.innerHTML=`<h2>Correct me</h2><div class="field"><label for="cText">What was wrong, and what is right?</label><textarea id="cText" placeholder="e.g. For Pisces lagna, Mercury as 7th lord is a maraka, so the Mercury dasha is not simply positive."></textarea></div>
+  <details><summary>Also save this as a new rule</summary><div class="stack" style="margin-top:10px"><div class="field"><label for="cCond">If</label><input id="cCond"></div><div class="field"><label for="cInt">Then</label><textarea id="cInt"></textarea></div></div></details>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn" type="submit">Save correction</button><span class="status" id="corrStatus"></span></div>`;
+  $("askOut").appendChild(box);
+  box.addEventListener("submit",async e=>{e.preventDefault();const st=$("corrStatus");const txt=$("cText").value.trim();if(!txt){st.textContent="Write the correction first.";return}
+    if(!S.db){st.textContent="Saving is unavailable in this view.";return}
+    try{await S.db.collection("corrections").add({analysisId:S.lastAnalysis.id||"",chartName:S.lastAnalysis.chartName,question:S.lastAnalysis.question,correction:txt,created:new Date().toISOString()});
+      let msg="Saved. It will be used in every analysis from now on.";
+      if($("cCond").value.trim()&&$("cInt").value.trim()){const n=await addRule({condition:$("cCond").value.trim(),interpretation:$("cInt").value.trim(),topic:"",source:"my correction"});msg+=` Also saved as rule R${n}.`}
+      st.textContent=msg;box.reset()}catch(err){st.textContent="Could not save: "+(err.message||err.code);st.className="status err"}})}
+
+/* ---------- learned ---------- */
+function renderStats(){$("stats").innerHTML=`<div><b>${S.rules.length}</b><span>rules taught</span></div><div><b>${S.corrections.length}</b><span>corrections</span></div><div><b>${S.charts.length}</b><span>charts saved</span></div>`}
+function renderCorr(){$("corrList").innerHTML=S.corrections.length?S.corrections.map(c=>`<div class="rule" data-id="${c.id}"><span class="id">${esc((c.created||"").slice(0,10))}</span><div style="min-width:0"><div class="meta">${esc(c.chartName||"")} · ${esc(c.question||"Overall reading")}</div><div>${esc(c.correction)}</div></div><div class="acts"><button class="btn ghost small" type="button">Delete</button></div></div>`).join(""):`<p class="empty">No corrections yet. After an analysis, tell AstroBuddy what it got wrong.</p>`;renderStats()}
+$("corrList").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const id=b.closest(".rule").dataset.id;confirmBtn(b,"Confirm",()=>S.db.collection("corrections").doc(id).delete())});
+$("exportBtn").onclick=async()=>{const st=$("exportStatus");if(!S.downloads){st.textContent="Downloading is not available in this view.";return}
+  const data={exported:new Date().toISOString(),tradition:"Parashari Jyotish",rules:S.rules,corrections:S.corrections};
+  try{await S.downloads.save({filename:"astrobuddy-knowledge.json",data:JSON.stringify(data,null,2)});st.textContent=""}catch(e){st.textContent=e&&e.code==="declined"?"Download cancelled.":"Download did not complete."}};
+
+/* ---------- boot ---------- */
+function bootChart(){if(typeof Astronomy==="undefined"){$("chartOut").innerHTML=`<div class="panel status err">The ephemeris library did not load, so charts cannot be cast. Reload the page to try again.</div>`;return}
+  if(!S.current)renderChart(J.computeChart(EXAMPLE),null)}
+bootChart();renderSaved();renderRules();renderCorr();
+function listen(col,key,after){let timer=setTimeout(()=>{if(key==="rules"&&!S.rules.length)$("ruleList").innerHTML=`<p class="empty">Rules can't be reached yet. They will appear when the connection returns.</p>`},10000);
+  S.db.collection(col).onSnapshot(s=>{if(!s.metadata.fromCache)clearTimeout(timer);S[key]=s.docs.map(d=>({id:d.id,...d.data()}));
+    if(key!=="rules")S[key].sort((a,b)=>String(b.created).localeCompare(String(a.created)));after()},err=>{clearTimeout(timer);console.warn(col,err)})}
+(async()=>{if(!window.claude||!claude.use){$("ruleList").innerHTML=`<p class="empty">Open this page on claude.ai to save rules and charts.</p>`;return}
+  const [db,sample,dl]=await Promise.all([claude.use("db"),claude.use("sample"),claude.use("downloads")]);
+  S.db=db;S.sample=sample;S.downloads=dl;
+  if(!dl)$("exportBtn").hidden=true;
+  if(!db){$("ruleList").innerHTML=`<p class="empty">Saving is not available in this view. Sign in on claude.ai to keep rules and charts.</p>`;return}
+  listen("rules","rules",renderRules);listen("charts","charts",renderSaved);listen("corrections","corrections",renderCorr);
+})();
+</script>
