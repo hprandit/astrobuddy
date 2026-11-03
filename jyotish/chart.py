@@ -32,11 +32,15 @@ OWN = {"Sun": [4], "Moon": [3], "Mars": [0, 7], "Mercury": [2, 5], "Jupiter": [8
        "Venus": [1, 6], "Saturn": [9, 10], "Rahu": [], "Ketu": []}
 
 
-def dignity(planet: str, sign: int) -> str:
+def dignity(planet: str, sign: int, lon: float | None = None) -> str:
     if EXALT.get(planet) == sign:
         return "exalted"
     if (EXALT.get(planet, -99) + 6) % 12 == sign:
         return "debilitated"
+    if lon is not None:
+        from .parashari import is_moolatrikona
+        if is_moolatrikona(planet, lon):
+            return "moolatrikona"
     if sign in OWN.get(planet, []):
         return "own sign"
     return ""
@@ -93,7 +97,7 @@ def _placement(name: str, lon: float, lagna_sign: int, retro=False) -> Placement
         name=name, longitude=round(lon, 4), sign=SIGNS[sign], sign_index=sign,
         degree_in_sign=round(lon % 30, 2), house=(sign - lagna_sign) % 12 + 1,
         nakshatra=nak, pada=pada, nakshatra_lord=nak_lord, retrograde=retro,
-        dignity=dignity(name, sign), navamsa_sign=SIGNS[_navamsa_sign(lon)],
+        dignity=dignity(name, sign, lon), navamsa_sign=SIGNS[_navamsa_sign(lon)],
         lord_of_houses=sorted(((s - lagna_sign) % 12 + 1) for s in range(12)
                               if SIGN_LORDS[s] == name),
     )
@@ -182,7 +186,10 @@ def chart_factors(chart: Chart) -> list[str]:
             tags.add(f"lord of house {h} in house {p.house}")
     md, ad = current_dasha(chart)
     if md:
-        tags |= {f"{md.lower()} mahadasha", f"{md.lower()}-{ad.lower()} dasha"}
+        tags |= {f"{md.lower()} mahadasha", f"{md.lower()}-{ad.lower()} dasha",
+                 f"{ad.lower()} antardasha"}
+    from .parashari import parashari_factors
+    tags |= parashari_factors(chart)
     return sorted(tags)
 
 
@@ -198,6 +205,8 @@ def chart_summary(chart: Chart) -> str:
         lines.append(f"- {p.name}: {p.sign} {p.degree_in_sign}°, house {p.house}, "
                      f"{p.nakshatra} pada {p.pada} (star lord {p.nakshatra_lord}), "
                      f"D9 {p.navamsa_sign}{lord}{'; ' + extra if extra else ''}")
+    from .parashari import parashari_summary
+    lines.append(parashari_summary(chart))
     md, ad = current_dasha(chart)
     lines.append(f"Current Vimshottari dasha: {md} mahadasha / {ad} antardasha.")
     lines.append("Mahadasha sequence: " + "; ".join(

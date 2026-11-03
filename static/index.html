@@ -20,7 +20,7 @@ svg text{fill:var(--ink);font-size:11px}svg .hn{fill:var(--mute);font-size:9px}s
 .sugg{position:absolute;z-index:5;left:0;right:0;background:var(--card);border:1px solid var(--line);border-radius:6px;display:none}.sugg div{padding:6px 8px;cursor:pointer}.sugg div:hover{background:var(--accent2)}
 .rule{border-bottom:1px solid var(--line);padding:8px 0}.rule b{color:var(--accent)}.x{float:right;background:none;border:0;color:var(--mute);cursor:pointer}
 </style></head><body>
-<header><h1>Jyotish Learning Assistant</h1><p>Sidereal · Lahiri · whole-sign houses. It learns the rules you teach and gets better from your corrections.</p></header>
+<header><h1>Jyotish Learning Assistant</h1><p>Parashari Jyotish · Lahiri · whole-sign houses. It learns the rules you teach and gets better from your corrections.</p></header>
 <nav><button data-t="chart" class="on">Chart</button><button data-t="teach">Teach</button><button data-t="analyze">Analyze</button><button data-t="learned">What it has learned</button></nav>
 <main>
 <section id="chart" class="tab on">
@@ -71,7 +71,10 @@ function renderChart(d){const c=d.chart;
  const cur=d.current_dasha;const md=c.dashas.map(x=>`<tr${x.lord===cur.mahadasha?' style="font-weight:600"':''}><td>${x.lord}</td><td>${x.start}</td><td>${x.end}</td></tr>`).join('');
  $('chartOut').innerHTML=`<div class="two"><div class="card">${northChart(c)}<p class="mute">Numbers are signs (1 = Aries). Ayanamsa ${c.ayanamsa}°.</p></div>
  <div class="card"><table><tr><th></th><th>Sign</th><th>House</th><th>Nakshatra</th><th>D9</th><th>Dignity</th></tr>${rows}</table></div></div>
- <div class="two"><div class="card"><h3 style="margin-top:0">Vimshottari</h3><p>Now: <b>${cur.mahadasha}</b> / ${cur.antardasha}</p><table><tr><th>Mahadasha</th><th>From</th><th>To</th></tr>${md}</table></div>
+ <div class="two"><div class="card"><h3 style="margin-top:0">Yogas</h3>${d.yogas.map(y=>`<div class="rule"><b>${esc(y.name)}</b><br><span class="mute">${esc(y.description)}</span></div>`).join('')||'<p class="mute">None of the core yogas found.</p>'}<p class="mute">Detected mechanically; judge strength and cancellations yourself.</p></div>
+ <div class="card"><h3 style="margin-top:0">Functional nature (${c.lagna.sign} lagna)</h3><table>${Object.entries(d.functional).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table>
+ <h3>Aspects (graha drishti)</h3><table>${Object.entries(d.aspects.reduce((m,a)=>((m[a.planet]=m[a.planet]||[]).push(a.house+(a.planets.length?' ('+a.planets.map(x=>AB[x]).join(' ')+')':'')),m),{})).map(([k,v])=>`<tr><td>${k}</td><td>houses ${v.join(', ')}</td></tr>`).join('')}</table></div></div>
+ <div class="two"><div class="card"><h3 style="margin-top:0">Vimshottari</h3><p>Now: ${cur.mahadasha?`<b>${cur.mahadasha}</b> / ${cur.antardasha}`:'<span class="mute">outside the 120-year cycle</span>'}</p><table><tr><th>Mahadasha</th><th>From</th><th>To</th></tr>${md}</table></div>
  <div class="card"><h3 style="margin-top:0">Chart factors</h3><p class="mute">Rules whose condition mentions these phrases are used for analysis.</p><p style="font-size:13px">${d.factors.map(esc).join(' · ')}</p>
  <button class="go" onclick="$('a_chart').value=${d.id};document.querySelector('[data-t=analyze]').click()">Analyze this chart</button></div></div>`}
 let placeTz='',placeT;

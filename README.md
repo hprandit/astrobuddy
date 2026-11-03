@@ -1,4 +1,4 @@
-# Jyotish Learning Assistant
+# Jyotish Learning Assistant (Parashari)
 
 A small platform that learns Vedic astrology with you and learns to give chart analysis.
 
@@ -31,13 +31,33 @@ is worked out for the birth date itself (including historical changes such as In
 time in 1942-45). Lookup is offline (GeoNames, towns of 5,000+ people). For a smaller village,
 type the coordinates and UTC offset by hand.
 
+## Parashari layer
+
+`jyotish/parashari.py` adds what a Parashari reading starts from:
+
+- **Graha drishti**: every graha aspects the 7th; Mars also the 4th and 8th, Jupiter the 5th and
+  9th, Saturn the 3rd and 10th. Rahu and Ketu get the 7th only; if your teacher gives them the
+  5th and 9th too, set `NODE_ASPECTS = [5, 7, 9]`.
+- **Functional nature by lagna**: yogakaraka, functional benefic/malefic, kendradhipati dosha.
+  Sun and Moon are not blemished by 8th lordship.
+- **Dignity** now includes moolatrikona.
+- **Yogas**: Pancha Mahapurusha, Gajakesari, Budhaditya, Chandra-Mangala, Parivartana,
+  Raja yoga (kendra and trikona lords conjunct, in mutual aspect or exchanging), Yogakaraka,
+  Dhana, Vipareeta Raja (Harsha/Sarala/Vimala), Neecha Bhanga (simplified) and Kemadruma.
+  These are detected mechanically and Claude is told to judge their strength.
+
+`python seed_rules.py` loads about 55 starter rules, paraphrased general Parashari principles.
+They are a scaffold to correct, not scripture: edit or delete any that differ from your books.
+
 ## Writing rules that match well
 
 Conditions are matched against the chart's factor phrases (shown on the Chart tab), e.g.
 `Saturn in house 7`, `Venus in Pisces`, `Moon in Rohini`, `Jupiter exalted`,
-`Mars retrograde`, `lord of house 10 in house 9`, `Rahu mahadasha`, `libra lagna`.
+`Mars retrograde`, `lord of house 10 in house 9`, `Rahu mahadasha`, `libra lagna`,
+`Jupiter aspects moon`, `Saturn aspects house 7`, `Moon conjunct Mars`, `Saturn yogakaraka`,
+`Saturn functional malefic`, `Gajakesari yoga`, `Raja yoga`, `Venus moolatrikona`.
 "7th house" is understood as "house 7".
 
 ## Not yet included
 
-Aspects (drishti) as matchable factors, yoga detection, other divisional charts, transits, multi-user accounts, hosting.
+Other divisional charts beyond D9, Shadbala and Ashtakavarga, full yoga cancellation rules, transits, multi-user accounts, hosting.

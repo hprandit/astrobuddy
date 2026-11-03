@@ -79,8 +79,10 @@ class KnowledgeBase:
             score = sum(10 for f in factor_text if f" {f} " in cond or f" {f}," in cond)
             cw = _words(r["condition"])
             score += len(cw & factor_words) * 0.5
-            score += len((_words(r["interpretation"]) | _words(r["topic"])) & q_words) * 1.0
-            if score >= 10 or (q_words and score >= 2):
+            q_score = len((_words(r["interpretation"]) | _words(r["topic"])) & q_words)
+            score += q_score
+            # Matched by the chart, or on the question's topic (Claude checks the condition).
+            if score >= 10 or q_score >= 1:
                 scored.append((score, r))
         scored.sort(key=lambda x: -x[0])
         return [dict(r, score=s) for s, r in scored[:limit]]
